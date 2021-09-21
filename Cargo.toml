@@ -1,0 +1,18 @@
+[package]
+name = "prediction_market_graphql"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dotenv = "0.15.0"
+juniper = "0.15.7"
+juniper_rocket = "0.8.0"
+rocket = "0.5.0-rc.1"
+deadpool = "0.8.2"
+tokio-postgres = "0.7.2"
+deadpool-postgres = "0.9.0"
+serde = { version = "1.0.130", features = ["derive"] }
+config = "0.11"
+anyhow = "1.0.44"
