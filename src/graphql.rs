@@ -16,15 +16,15 @@ pub struct Query;
 impl Query {
   #[graphql(description = "get a storage")]
   async fn storage(context: &Context, id: i32) -> FieldResult<Storage> {
-    let conn = context.pool.get().await.unwrap();
-    let result = get_storage(&conn, id).await.unwrap();
+    let conn = context.pool.get().await?;
+    let result = get_storage(&conn, id).await?;
     Ok(result)
   }
 
   #[graphql(description = "get all storages")]
   async fn storages(context: &Context) -> FieldResult<Vec<Storage>> {
-    let conn = context.pool.get().await.unwrap();
-    let storages = get_storages(&conn).await.unwrap();
+    let conn = context.pool.get().await?;
+    let storages = get_storages(&conn).await?;
     Ok(storages)
   }
 }

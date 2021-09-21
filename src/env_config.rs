@@ -1,5 +1,6 @@
 use config::ConfigError;
 use serde::Deserialize;
+use std::env;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -12,4 +13,8 @@ impl Config {
     cfg.merge(config::Environment::new().separator("__"))?;
     cfg.try_into()
   }
+}
+
+pub fn get_schema() -> String {
+  env::var("SCHEMA").expect("SCHEMA must be set")
 }
