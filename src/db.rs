@@ -2,6 +2,8 @@ use config::ConfigError;
 use serde::Deserialize;
 use std::env;
 
+pub type Connection = deadpool::managed::Object<deadpool_postgres::Manager>;
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
   pub pg: deadpool_postgres::Config,

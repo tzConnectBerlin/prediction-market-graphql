@@ -1,47 +1,58 @@
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use juniper::GraphQLObject;
+use pg_bigdecimal::PgNumeric;
 
-#[derive(Debug, Clone, GraphQLObject)]
-pub struct TxContext {
-    pub id: i32,
-    pub level: i32,
-    pub contract: String,
-    pub operation_hash: String,
-    pub operation_group_number: i32,
-    pub operation_number: i32,
-    pub content_number: i32,
-    pub source: Option<String>,
-    pub destination: Option<String>,
-    pub entrypoint: Option<String>,
+pub fn numeric_to_string(n: PgNumeric) -> String {
+    let optn: Option<BigDecimal> = n.n;
+    match optn {
+        Some(n) => n.normalized().to_string(),
+        None => "Null".to_string(),
+    }
 }
+
+// Storage
 
 #[derive(Debug, Clone, GraphQLObject)]
 pub struct Storage {
-    pub id: i32,
+    pub level: i32,
     pub lambda_repository_creator: Option<String>,
     pub create_restrictions_creator_address: Option<String>,
     pub currency: Option<String>,
-    pub tx_context: TxContext,
+    pub timestamp: DateTime<Utc>,
 }
 
 impl Storage {
     pub fn from_row(row: &tokio_postgres::Row) -> Storage {
         Storage {
-            id: row.get(0),
-            lambda_repository_creator: row.get(1),
-            create_restrictions_creator_address: row.get(2),
-            currency: row.get(3),
-            tx_context: TxContext {
-                id: row.get(4),
-                level: row.get(5),
-                contract: row.get(6),
-                operation_hash: row.get(7),
-                operation_group_number: row.get(8),
-                operation_number: row.get(9),
-                content_number: row.get(10),
-                source: Some(row.get(11)),
-                destination: Some(row.get(12)),
-                entrypoint: Some(row.get(13)),
-            },
+            level: row.get(0),
+            timestamp: row.get(1),
+            lambda_repository_creator: row.get(2),
+            create_restrictions_creator_address: row.get(3),
+            currency: row.get(4),
+        }
+    }
+}
+
+// Supply Map
+
+#[derive(Debug, Clone, GraphQLObject)]
+pub struct SupplyMap {
+    pub level: i32,
+    pub timestamp: DateTime<Utc>,
+    pub total_supply: String,
+    pub in_reserve: String,
+    pub token_id: String,
+}
+
+impl SupplyMap {
+    pub fn from_row(row: &tokio_postgres::Row) -> SupplyMap {
+        SupplyMap {
+            level: row.get(0),
+            timestamp: row.get(1),
+            total_supply: numeric_to_string(row.get(2)),
+            in_reserve: numeric_to_string(row.get(3)),
+            token_id: numeric_to_string(row.get(4)),
         }
     }
 }

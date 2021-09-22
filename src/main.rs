@@ -1,11 +1,12 @@
 #[macro_use]
 extern crate rocket;
+extern crate bigdecimal;
 extern crate deadpool_postgres;
 extern crate dotenv;
 extern crate juniper_rocket;
 use dotenv::dotenv;
 use rocket::{response::content, State};
-mod env_config;
+mod db;
 mod graphql;
 mod models;
 mod services;
@@ -36,7 +37,7 @@ async fn post_graphql_handler(
 #[launch]
 fn rocket() -> _ {
     dotenv().ok();
-    let config = env_config::Config::from_env().unwrap();
+    let config = db::Config::from_env().unwrap();
     let pool = config.pg.create_pool(tokio_postgres::NoTls).unwrap();
     let schema_context = graphql::Context { pool: pool.clone() };
     let schema = graphql::create_schema();

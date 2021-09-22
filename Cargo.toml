@@ -11,8 +11,11 @@ juniper = "0.15.7"
 juniper_rocket = "0.8.0"
 rocket = "0.5.0-rc.1"
 deadpool = "0.8.2"
-tokio-postgres = "0.7.2"
+chrono = { version = "0.4", features = ["serde"] }
+tokio-postgres = { version = "0.7.2", features = [ "with-chrono-0_4" ] }
 deadpool-postgres = "0.9.0"
 serde = { version = "1.0.130", features = ["derive"] }
 config = "0.11"
 anyhow = "1.0.44"
+pg_bigdecimal = { version = "0.1.1", features = ["serde"] }
+bigdecimal = "0.3.0"
