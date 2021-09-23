@@ -1,11 +1,14 @@
 use bigdecimal::{BigDecimal, FromPrimitive};
 use pg_bigdecimal::PgNumeric;
 
-pub fn numeric_to_string(n: PgNumeric) -> String {
-    let optn: Option<BigDecimal> = n.n;
+pub fn numeric_to_string(n: Option<PgNumeric>) -> Option<String> {
+    let optn: Option<BigDecimal> = match n {
+        Some(x) => x.n,
+        None => None,
+    };
     match optn {
-        Some(n) => n.normalized().to_string(),
-        None => "Null".to_string(),
+        Some(n) => Some(n.normalized().to_string()),
+        None => None,
     }
 }
 

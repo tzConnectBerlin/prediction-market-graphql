@@ -1,6 +1,7 @@
-use crate::models::{LedgerMap, LiquidityProviderMap, Storage, SupplyMap};
+use crate::models::{LedgerMap, LiquidityProviderMap, Market, Storage, SupplyMap};
 use crate::services::ledger_map_service::get_ledgers;
 use crate::services::liquidity_provider_service::get_liquidity_providers;
+use crate::services::market_map_service::get_markets;
 use crate::services::storage_service::{get_storage, get_storages};
 use crate::services::supply_map_service::{get_all_supply_maps, get_supply_map_by_token};
 use juniper::{graphql_object, EmptyMutation, EmptySubscription, FieldResult, RootNode};
@@ -64,6 +65,13 @@ impl Query {
     ) -> FieldResult<Vec<LiquidityProviderMap>> {
         let conn = context.pool.get().await?;
         let result = get_liquidity_providers(&conn, market_ids, originators).await?;
+        Ok(result)
+    }
+
+    #[graphql(description = "get markets")]
+    async fn markets(context: &Context, market_ids: Option<Vec<i32>>) -> FieldResult<Vec<Market>> {
+        let conn = context.pool.get().await?;
+        let result = get_markets(&conn, market_ids).await?;
         Ok(result)
     }
 }
