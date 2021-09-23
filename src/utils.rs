@@ -6,10 +6,7 @@ pub fn numeric_to_string(n: Option<PgNumeric>) -> Option<String> {
         Some(x) => x.n,
         None => None,
     };
-    match optn {
-        Some(n) => Some(n.normalized().to_string()),
-        None => None,
-    }
+    optn.map(|n| n.normalized().to_string())
 }
 
 pub fn i32_to_numeric(n: &i32) -> PgNumeric {

@@ -11,7 +11,7 @@ pub async fn get_markets(conn: &Connection, market_ids: Option<Vec<i32>>) -> Res
         Some(ref x) => {
             let markts = x
                 .iter()
-                .map(|i| format!("{}", i.to_string()))
+                .map(|i| i.to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
             format!("WHERE market_map.idx_markets_nat_4 in ({})", markts)

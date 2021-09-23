@@ -41,13 +41,10 @@ fn rocket() -> _ {
     dotenv().ok();
     let config = db::Config::from_env().unwrap();
     let pool = config.pg.create_pool(tokio_postgres::NoTls).unwrap();
-    let schema_context = graphql::Context { pool: pool.clone() };
+    let schema_context = graphql::Context { pool };
     let schema = graphql::create_schema();
-    rocket::build()
-        .manage(schema_context.clone())
-        .manage(schema)
-        .mount(
-            "/",
-            rocket::routes![graphiql, get_graphql_handler, post_graphql_handler],
-        )
+    rocket::build().manage(schema_context).manage(schema).mount(
+        "/",
+        rocket::routes![graphiql, get_graphql_handler, post_graphql_handler],
+    )
 }

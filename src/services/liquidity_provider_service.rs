@@ -15,7 +15,7 @@ pub async fn get_liquidity_providers(
         Some(ref x) => {
             let markts = x
                 .iter()
-                .map(|i| format!("{}", i.to_string()))
+                .map(|i| i.to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
             format!("WHERE b.idx_markets_market_id in ({})", markts)
@@ -29,7 +29,11 @@ pub async fn get_liquidity_providers(
                 .map(|i| format!("'{}'", i))
                 .collect::<Vec<String>>()
                 .join(", ");
-            let where_clause = if market_clause.len() > 0 { "" } else { "WHERE" };
+            let where_clause = if !market_clause.is_empty() {
+                ""
+            } else {
+                "WHERE"
+            };
             format!(
                 "{} b.idx_markets_originator in ({})",
                 where_clause, lp_providers

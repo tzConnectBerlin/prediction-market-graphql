@@ -15,7 +15,7 @@ pub async fn get_ledgers(
         Some(ref x) => {
             let toks = x
                 .iter()
-                .map(|i| format!("{}", i.to_string()))
+                .map(|i| i.to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
             format!("WHERE idx_tokens_token_id in ({})", toks)
@@ -29,7 +29,7 @@ pub async fn get_ledgers(
                 .map(|i| format!("'{}'", i))
                 .collect::<Vec<String>>()
                 .join(", ");
-            let where_clause = if tokens.len() > 0 { "" } else { "WHERE" };
+            let where_clause = if !tokens.is_empty() { "" } else { "WHERE" };
             format!("{} idx_tokens_owner in ({})", where_clause, owner)
         }
         None => "".to_string(),
