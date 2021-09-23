@@ -1,4 +1,4 @@
-use crate::db::{get_schema, Connection};
+use crate::db::{get_schema, DBConnection};
 use crate::models::LiquidityProviderMap;
 use anyhow::Result;
 
@@ -6,7 +6,7 @@ use anyhow::Result;
 * TODO: Find a better way to do this
 */
 pub async fn get_liquidity_providers(
-    conn: &Connection,
+    conn: &DBConnection,
     market_ids: Option<Vec<i32>>,
     providers: Option<Vec<String>>,
 ) -> Result<Vec<LiquidityProviderMap>> {

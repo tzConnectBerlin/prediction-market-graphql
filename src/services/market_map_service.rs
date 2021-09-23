@@ -1,11 +1,11 @@
-use crate::db::{get_schema, Connection};
+use crate::db::{get_schema, DBConnection};
 use crate::models::Market;
 use anyhow::Result;
 
 /**
 * TODO: Find a better way to do this
 */
-pub async fn get_markets(conn: &Connection, market_ids: Option<Vec<i32>>) -> Result<Vec<Market>> {
+pub async fn get_markets(conn: &DBConnection, market_ids: Option<Vec<i32>>) -> Result<Vec<Market>> {
     let schema = get_schema();
     let market_clause = match market_ids {
         Some(ref x) => {

@@ -1,9 +1,9 @@
-use crate::db::{get_schema, Connection};
+use crate::db::{get_schema, DBConnection};
 use crate::models::SupplyMap;
 use crate::utils::i32_to_numeric;
 use anyhow::Result;
 
-pub async fn get_supply_map_by_token(conn: &Connection, token_id: i32) -> Result<SupplyMap> {
+pub async fn get_supply_map_by_token(conn: &DBConnection, token_id: i32) -> Result<SupplyMap> {
     let schema = get_schema();
     let stmt = conn
         .prepare_cached(
@@ -20,7 +20,7 @@ pub async fn get_supply_map_by_token(conn: &Connection, token_id: i32) -> Result
     Ok(SupplyMap::from_row(first))
 }
 
-pub async fn get_all_supply_maps(conn: &Connection) -> Result<Vec<SupplyMap>> {
+pub async fn get_all_supply_maps(conn: &DBConnection) -> Result<Vec<SupplyMap>> {
     let schema = get_schema();
     let stmt = conn
         .prepare_cached(
