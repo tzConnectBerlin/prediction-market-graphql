@@ -70,3 +70,28 @@ impl LedgerMap {
         }
     }
 }
+
+// liquidity provider map
+
+#[derive(Debug, Clone, GraphQLObject)]
+pub struct LiquidityProviderMap {
+    pub level: i32,
+    pub timestamp: DateTime<Utc>,
+    pub bet: String,
+    pub probability: String,
+    pub market_id: String,
+    pub originator: String,
+}
+
+impl LiquidityProviderMap {
+    pub fn from_row(row: &tokio_postgres::Row) -> LiquidityProviderMap {
+        LiquidityProviderMap {
+            level: row.get(0),
+            timestamp: row.get(1),
+            bet: numeric_to_string(row.get(2)),
+            probability: numeric_to_string(row.get(3)),
+            market_id: numeric_to_string(row.get(4)),
+            originator: row.get(5),
+        }
+    }
+}
