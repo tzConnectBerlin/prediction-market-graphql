@@ -1,14 +1,7 @@
 use crate::db::{get_schema, Connection};
 use crate::models::SupplyMap;
+use crate::utils::i32_to_numeric;
 use anyhow::Result;
-
-use bigdecimal::{BigDecimal, FromPrimitive};
-use pg_bigdecimal::PgNumeric;
-
-pub fn to_numeric(n: i32) -> PgNumeric {
-    let dec = BigDecimal::from_i32(n).unwrap();
-    PgNumeric { n: Some(dec) }
-}
 
 pub async fn get_supply_map_by_token(conn: &Connection, token_id: i32) -> Result<SupplyMap> {
     let schema = get_schema();
@@ -22,7 +15,7 @@ pub async fn get_supply_map_by_token(conn: &Connection, token_id: i32) -> Result
             .as_str(),
         )
         .await?;
-    let rows = conn.query(&stmt, &[&to_numeric(token_id)]).await?;
+    let rows = conn.query(&stmt, &[&i32_to_numeric(&token_id)]).await?;
     let first = &rows[0];
     Ok(SupplyMap::from_row(first))
 }

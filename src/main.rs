@@ -4,12 +4,14 @@ extern crate bigdecimal;
 extern crate deadpool_postgres;
 extern crate dotenv;
 extern crate juniper_rocket;
+extern crate tokio_postgres;
 use dotenv::dotenv;
 use rocket::{response::content, State};
 mod db;
 mod graphql;
 mod models;
 mod services;
+mod utils;
 
 #[rocket::get("/")]
 fn graphiql() -> content::Html<String> {

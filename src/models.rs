@@ -1,15 +1,6 @@
-use bigdecimal::BigDecimal;
+use crate::utils::numeric_to_string;
 use chrono::{DateTime, Utc};
 use juniper::GraphQLObject;
-use pg_bigdecimal::PgNumeric;
-
-pub fn numeric_to_string(n: PgNumeric) -> String {
-    let optn: Option<BigDecimal> = n.n;
-    match optn {
-        Some(n) => n.normalized().to_string(),
-        None => "Null".to_string(),
-    }
-}
 
 // Storage
 
@@ -52,6 +43,29 @@ impl SupplyMap {
             timestamp: row.get(1),
             total_supply: numeric_to_string(row.get(2)),
             in_reserve: numeric_to_string(row.get(3)),
+            token_id: numeric_to_string(row.get(4)),
+        }
+    }
+}
+
+// Ledger Map
+
+#[derive(Debug, Clone, GraphQLObject)]
+pub struct LedgerMap {
+    pub level: i32,
+    pub timestamp: DateTime<Utc>,
+    pub owner: String,
+    pub balance: String,
+    pub token_id: String,
+}
+
+impl LedgerMap {
+    pub fn from_row(row: &tokio_postgres::Row) -> LedgerMap {
+        LedgerMap {
+            level: row.get(0),
+            timestamp: row.get(1),
+            owner: row.get(2),
+            balance: numeric_to_string(row.get(3)),
             token_id: numeric_to_string(row.get(4)),
         }
     }

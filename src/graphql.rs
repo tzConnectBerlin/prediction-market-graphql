@@ -1,8 +1,8 @@
-use crate::models::{Storage, SupplyMap};
+use crate::models::{LedgerMap, Storage, SupplyMap};
+use crate::services::ledger_map_service::get_ledgers;
 use crate::services::storage_service::{get_storage, get_storages};
 use crate::services::supply_map_service::{get_all_supply_maps, get_supply_map_by_token};
 use juniper::{graphql_object, EmptyMutation, EmptySubscription, FieldResult, RootNode};
-use pg_bigdecimal::PgNumeric;
 
 #[derive(Clone)]
 pub struct Context {
@@ -31,16 +31,27 @@ impl Query {
     }
 
     #[graphql(description = "get supply map for a given token id")]
-    async fn supply_map(context: &Context, token_id: i32) -> FieldResult<SupplyMap> {
+    async fn token_supply(context: &Context, token_id: i32) -> FieldResult<SupplyMap> {
         let conn = context.pool.get().await?;
         let result = get_supply_map_by_token(&conn, token_id).await?;
         Ok(result)
     }
 
     #[graphql(description = "get supply map for a given token id")]
-    async fn supply_maps(context: &Context) -> FieldResult<Vec<SupplyMap>> {
+    async fn token_supplies(context: &Context) -> FieldResult<Vec<SupplyMap>> {
         let conn = context.pool.get().await?;
         let result = get_all_supply_maps(&conn).await?;
+        Ok(result)
+    }
+
+    #[graphql(description = "get ledger maps and also filter by token and owner")]
+    async fn ledger(
+        context: &Context,
+        token_ids: Option<Vec<i32>>,
+        owners: Option<Vec<String>>,
+    ) -> FieldResult<Vec<LedgerMap>> {
+        let conn = context.pool.get().await?;
+        let result = get_ledgers(&conn, token_ids, owners).await?;
         Ok(result)
     }
 }
