@@ -7,16 +7,12 @@ edition = "2018"
 
 [dependencies]
 dotenv = "0.15.0"
-juniper = { git = "https://github.com/graphql-rust/juniper", branch = "master", features = ["expose-test-schema"]  }
-juniper_subscriptions = { git = "https://github.com/graphql-rust/juniper", branch = "master" }
-juniper_actix = { git = "https://github.com/graphql-rust/juniper", branch = "master", features = ["subscriptions"] }
-juniper_graphql_ws= { git = "https://github.com/graphql-rust/juniper", branch = "master" }
-actix-web = "4.0.0-beta.9"
-actix-cors = "0.6.0-beta.2"
+juniper = "0.15.7"
+juniper_subscriptions = "0.16.0"
+juniper_graphql_ws = "0.3.0"
 env_logger = "0.9"
 serde_json = "1.0"
 rand = "0.8"
-rocket = "0.5.0-rc.1"
 deadpool = "0.8.2"
 chrono = { version = "0.4", features = ["serde"] }
 tokio-postgres = { version = "0.7.2", features = [ "with-chrono-0_4" ] }
@@ -27,7 +23,11 @@ anyhow = "1.0.44"
 pg_bigdecimal = { version = "0.1.1", features = ["serde"] }
 bigdecimal = "0.3.0"
 futures = "0.3.17"
-tokio = "1.12.0"
+tokio = { version = "1.12.0", features = ["full"] }
 async-stream = "0.3.2"
 tokio-stream = "0.1.7"
 log = "0.4.14"
+async-std = "1.10.0"
+sqlx = {version = "0.5.7", features = ["postgres", "runtime-tokio-rustls"] }
+juniper_warp = {version="0.7.0", features = ["subscriptions"]}
+warp = "0.3.1"

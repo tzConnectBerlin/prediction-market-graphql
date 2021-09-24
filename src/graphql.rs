@@ -1,6 +1,6 @@
-use crate::db::get_raw_connection;
+use crate::db::get_db_url;
 use crate::models::{LedgerMap, LiquidityProviderMap, Market, Storage, SupplyMap};
-use crate::services::ledger_map_service::{get_ledger_stream, get_ledgers, get_ledgers_all};
+use crate::services::ledger_map_service::get_ledgers;
 use crate::services::liquidity_provider_service::get_liquidity_providers;
 use crate::services::market_map_service::get_markets;
 use crate::services::storage_service::{get_storage, get_storages};
@@ -11,6 +11,7 @@ use juniper::{
     RootNode,
 };
 use log::{error, info};
+use sqlx::postgres::PgListener;
 use std::pin::Pin;
 #[derive(Clone)]
 pub struct Context {
@@ -89,30 +90,32 @@ pub type LedgerStream =
 
 #[graphql_subscription(Context = Context)]
 impl Subscription {
-    #[graphql(
-        description = "A random humanoid creature in the Star Wars universe every 3 seconds. Second result will be an error."
-    )]
-    async fn ledgers() -> LedgerStream {
-        let (client, connection) = get_raw_connection().await.unwrap();
-        let mut stream = get_ledger_stream(&client, connection).await.unwrap();
+    #[graphql(description = "Sends all the ledgers when they change")]
+    async fn ledgers(context: &Context) -> LedgerStream {
+        let conn = context.pool.get().await.unwrap();
+        let db_url = get_db_url().unwrap();
+        let mut listener = PgListener::connect(&db_url).await.unwrap();
+        listener.listen("ledger_notify").await.unwrap();
+        let mut stream = listener.into_stream();
+
         let new_stream = async_stream::stream! {
             loop {
                 match stream.try_next().await {
-            Ok(n) => {
-                if let Some(msg) = n {
-                    info!("{}", msg);
-                    let ledgers = get_ledgers_all(&client).await.unwrap();
-                    yield Ok(ledgers)
-                }
-            }
-            Err(err) => {
-                error!("{}", err);
-                yield Err(FieldError::new(
-                        "some field error from handler",
-                        graphql_value!("some additional string"),
-                    ))
-            }
-        }
+                    Ok(n) => {
+                        if let Some(msg) = n {
+                            info!("{:?}", msg);
+                            let ledgers = get_ledgers(&conn, None, None).await.unwrap();
+                            yield Ok(ledgers)
+                        }
+                    }
+                    Err(err) => {
+                        error!("{}", err);
+                        yield Err(FieldError::new(
+                                "Ledger Subscription Error",
+                                graphql_value!(format!("{}", err)),
+                            ))
+                    }
+              }
             }
         };
 

@@ -1,90 +1,73 @@
-use env_logger::Env;
-use std::time::Duration;
-
-use actix_cors::Cors;
-use actix_web::{
-    http::header,
-    middleware,
-    web::{self, Data},
-    App, Error, HttpRequest, HttpResponse, HttpServer,
-};
-use juniper_actix::{graphql_handler, playground_handler, subscriptions::subscriptions_handler};
-use juniper_graphql_ws::ConnectionConfig;
-
 use dotenv::dotenv;
+use futures::FutureExt as _;
+use juniper_graphql_ws::ConnectionConfig;
+use juniper_warp::{playground_filter, subscriptions::serve_graphql_ws};
+use std::{env, sync::Arc};
+use warp::{http::Response, Filter};
+
 mod db;
 mod graphql;
 mod models;
 mod services;
 mod utils;
 
-async fn playground() -> Result<HttpResponse, Error> {
-    playground_handler("/graphql", Some("/subscriptions")).await
-}
-
-async fn graphql(
-    req: actix_web::HttpRequest,
-    payload: actix_web::web::Payload,
-    schema: web::Data<graphql::Schema>,
-    context: web::Data<graphql::Context>,
-) -> Result<HttpResponse, Error> {
-    graphql_handler(&schema, &context, req, payload).await
-}
-
-async fn subscriptions(
-    req: HttpRequest,
-    stream: web::Payload,
-    schema: web::Data<graphql::Schema>,
-    context: web::Data<graphql::Context>,
-) -> Result<HttpResponse, Error> {
-    let schema = schema.into_inner();
-    let config = ConnectionConfig::new(graphql::Context {
-        pool: context.pool.clone(),
-    });
-    // set the keep alive interval to 15 secs so that it doesn't timeout in playground
-    // playground has a hard-coded timeout set to 20 secs
-    let config = config.with_keep_alive_interval(Duration::from_secs(15));
-
-    subscriptions_handler(req, stream, schema, config).await
-}
-
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    let env = Env::default().filter_or("RUST_LOG", "info");
-    env_logger::init_from_env(env);
+#[tokio::main]
+async fn main() {
     dotenv().ok();
+    env::set_var("RUST_LOG", "prediction-market-graphql");
+    env_logger::init();
+
+    let log = warp::log("prediction-market-graphql");
+
+    let homepage = warp::path::end().map(|| {
+        Response::builder()
+            .header("content-type", "text/html")
+            .body("<html><h1>juniper_subscriptions demo</h1><div>visit <a href=\"/playground\">graphql playground</a></html>".to_string())
+    });
+
     let config = db::Config::from_env().unwrap();
     let pool = config.pg.create_pool(tokio_postgres::NoTls).unwrap();
-    let schema_context = graphql::Context { pool };
-    HttpServer::new(move || {
-        App::new()
-            .app_data(Data::new(graphql::create_schema()))
-            .app_data(Data::new(schema_context.clone()))
-            .wrap(
-                Cors::default()
-                    .allow_any_origin()
-                    .allowed_methods(vec!["POST", "GET"])
-                    .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-                    .allowed_header(header::CONTENT_TYPE)
-                    .supports_credentials()
-                    .max_age(3600),
-            )
-            .wrap(middleware::Compress::default())
-            .wrap(middleware::Logger::default())
-            .service(web::resource("/subscriptions").route(web::get().to(subscriptions)))
-            .service(
-                web::resource("/graphql")
-                    .route(web::post().to(graphql))
-                    .route(web::get().to(graphql)),
-            )
-            .service(web::resource("/playground").route(web::get().to(playground)))
-            .default_service(web::route().to(|| {
-                HttpResponse::Found()
-                    .append_header((header::LOCATION, "/playground"))
-                    .finish()
-            }))
+    let schema_context = graphql::Context { pool: pool.clone() };
+
+    let qm_schema = graphql::create_schema();
+    let qm_state = warp::any().map(move || schema_context.clone());
+    let qm_graphql_filter = juniper_warp::make_graphql_filter(qm_schema, qm_state.boxed());
+
+    let root_node = Arc::new(graphql::create_schema());
+
+    log::info!("Listening on 127.0.0.1:8080");
+
+    let routes = (warp::path("subscriptions")
+        .and(warp::ws())
+        .map(move |ws: warp::ws::Ws| {
+            let root_node = root_node.clone();
+            let new_pool = pool.clone();
+            ws.on_upgrade(move |websocket| async move {
+                serve_graphql_ws(
+                    websocket,
+                    root_node,
+                    ConnectionConfig::new(graphql::Context { pool: new_pool }),
+                )
+                .map(|r| {
+                    if let Err(e) = r {
+                        println!("Websocket error: {}", e);
+                    }
+                })
+                .await
+            })
+        }))
+    .map(|reply| {
+        // TODO#584: remove this workaround
+        warp::reply::with_header(reply, "Sec-WebSocket-Protocol", "graphql-ws")
     })
-    .bind(format!("{}:{}", "127.0.0.1", 8080))?
-    .run()
-    .await
+    .or(warp::post()
+        .and(warp::path("graphql"))
+        .and(qm_graphql_filter))
+    .or(warp::get()
+        .and(warp::path("playground"))
+        .and(playground_filter("/graphql", Some("/subscriptions"))))
+    .or(homepage)
+    .with(log);
+
+    warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
 }
