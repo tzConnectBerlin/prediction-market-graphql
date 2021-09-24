@@ -54,7 +54,7 @@ impl Query {
     }
 
     #[graphql(description = "get ledger maps and also filter by token and owner")]
-    async fn ledger(
+    async fn ledgers(
         context: &Context,
         token_ids: Option<Vec<i32>>,
         owners: Option<Vec<String>>,
@@ -88,6 +88,15 @@ pub struct Subscription;
 pub type LedgerStream =
     Pin<Box<dyn futures::Stream<Item = Result<Vec<LedgerMap>, FieldError>> + Send>>;
 
+pub type MarketStream =
+    Pin<Box<dyn futures::Stream<Item = Result<Vec<Market>, FieldError>> + Send>>;
+
+pub type LiquidityProviderMapStream =
+    Pin<Box<dyn futures::Stream<Item = Result<Vec<LiquidityProviderMap>, FieldError>> + Send>>;
+
+pub type SupplyMapStream =
+    Pin<Box<dyn futures::Stream<Item = Result<Vec<SupplyMap>, FieldError>> + Send>>;
+
 #[graphql_subscription(Context = Context)]
 impl Subscription {
     #[graphql(description = "Sends all the ledgers when they change")]
@@ -112,6 +121,102 @@ impl Subscription {
                         error!("{}", err);
                         yield Err(FieldError::new(
                                 "Ledger Subscription Error",
+                                graphql_value!(format!("{}", err)),
+                            ))
+                    }
+              }
+            }
+        };
+
+        Box::pin(new_stream)
+    }
+
+    #[graphql(description = "Sends all the markets when they change")]
+    async fn markets(context: &Context) -> MarketStream {
+        let conn = context.pool.get().await.unwrap();
+        let db_url = get_db_url().unwrap();
+        let mut listener = PgListener::connect(&db_url).await.unwrap();
+        listener.listen("market_notify").await.unwrap();
+        let mut stream = listener.into_stream();
+
+        let new_stream = async_stream::stream! {
+            loop {
+                match stream.try_next().await {
+                    Ok(n) => {
+                        if let Some(msg) = n {
+                            info!("{:?}", msg);
+                            let ledgers = get_markets(&conn, None).await.unwrap();
+                            yield Ok(ledgers)
+                        }
+                    }
+                    Err(err) => {
+                        error!("{}", err);
+                        yield Err(FieldError::new(
+                                "Market Subscription Error",
+                                graphql_value!(format!("{}", err)),
+                            ))
+                    }
+              }
+            }
+        };
+
+        Box::pin(new_stream)
+    }
+
+    #[graphql(description = "Sends all the liquidity providers when they change")]
+    async fn liquidity_providers(context: &Context) -> LiquidityProviderMapStream {
+        let conn = context.pool.get().await.unwrap();
+        let db_url = get_db_url().unwrap();
+        let mut listener = PgListener::connect(&db_url).await.unwrap();
+        listener.listen("liquidity_provider_notify").await.unwrap();
+        let mut stream = listener.into_stream();
+
+        let new_stream = async_stream::stream! {
+            loop {
+                match stream.try_next().await {
+                    Ok(n) => {
+                        if let Some(msg) = n {
+                            info!("{:?}", msg);
+                            let ledgers = get_liquidity_providers(&conn, None, None).await.unwrap();
+                            yield Ok(ledgers)
+                        }
+                    }
+                    Err(err) => {
+                        error!("{}", err);
+                        yield Err(FieldError::new(
+                                "Liquidity Provider Subscription Error",
+                                graphql_value!(format!("{}", err)),
+                            ))
+                    }
+              }
+            }
+        };
+
+        Box::pin(new_stream)
+    }
+
+    #[graphql(description = "Sends all the token supplies when they change")]
+    async fn token_supplies(context: &Context) -> SupplyMapStream {
+        let conn = context.pool.get().await.unwrap();
+        let db_url = get_db_url().unwrap();
+        let mut listener = PgListener::connect(&db_url).await.unwrap();
+        listener.listen("token_supplies_notify").await.unwrap();
+        let mut stream = listener.into_stream();
+
+        let new_stream = async_stream::stream! {
+            loop {
+                match stream.try_next().await {
+                    Ok(n) => {
+                        if let Some(msg) = n {
+                            info!("{:?}", msg);
+                            let ledgers = get_all_supply_maps(&conn).await.unwrap();
+                            yield Ok(ledgers)
+                        }
+                    }
+                    Err(err) => {
+                        error!("{}", err);
+                        yield Err(FieldError::new(
+                                "Token Supply Subscription Error",
                                 graphql_value!(format!("{}", err)),
                             ))
                     }
