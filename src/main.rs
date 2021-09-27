@@ -14,7 +14,6 @@ mod utils;
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    env::set_var("RUST_LOG", "prediction-market-graphql");
     env_logger::init();
 
     let log = warp::log("prediction-market-graphql");
