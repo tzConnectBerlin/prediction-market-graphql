@@ -1,4 +1,3 @@
-use crate::db::get_db_url;
 use crate::models::{LedgerMap, LiquidityProviderMap, Market, Storage, SupplyMap};
 use crate::services::ledger_map_service::get_ledgers;
 use crate::services::liquidity_provider_service::get_liquidity_providers;
@@ -12,10 +11,12 @@ use juniper::{
 };
 use log::{error, info};
 use sqlx::postgres::PgListener;
+use sqlx::{Pool, Postgres};
 use std::pin::Pin;
 #[derive(Clone)]
 pub struct Context {
     pub pool: deadpool::managed::Pool<deadpool_postgres::Manager>,
+    pub listener_pool: Pool<Postgres>,
 }
 
 impl juniper::Context for Context {}
@@ -102,8 +103,9 @@ impl Subscription {
     #[graphql(description = "Sends all the ledgers when they change")]
     async fn ledgers(context: &Context) -> LedgerStream {
         let conn = context.pool.get().await.unwrap();
-        let db_url = get_db_url().unwrap();
-        let mut listener = PgListener::connect(&db_url).await.unwrap();
+        let mut listener = PgListener::connect_with(&context.listener_pool)
+            .await
+            .unwrap();
         listener.listen("ledger_notify").await.unwrap();
         let mut stream = listener.into_stream();
 
@@ -134,8 +136,9 @@ impl Subscription {
     #[graphql(description = "Sends all the markets when they change")]
     async fn markets(context: &Context) -> MarketStream {
         let conn = context.pool.get().await.unwrap();
-        let db_url = get_db_url().unwrap();
-        let mut listener = PgListener::connect(&db_url).await.unwrap();
+        let mut listener = PgListener::connect_with(&context.listener_pool)
+            .await
+            .unwrap();
         listener.listen("market_notify").await.unwrap();
         let mut stream = listener.into_stream();
 
@@ -145,8 +148,8 @@ impl Subscription {
                     Ok(n) => {
                         if let Some(msg) = n {
                             info!("{:?}", msg);
-                            let ledgers = get_markets(&conn, None).await.unwrap();
-                            yield Ok(ledgers)
+                            let markets = get_markets(&conn, None).await.unwrap();
+                            yield Ok(markets)
                         }
                     }
                     Err(err) => {
@@ -166,8 +169,9 @@ impl Subscription {
     #[graphql(description = "Sends all the liquidity providers when they change")]
     async fn liquidity_providers(context: &Context) -> LiquidityProviderMapStream {
         let conn = context.pool.get().await.unwrap();
-        let db_url = get_db_url().unwrap();
-        let mut listener = PgListener::connect(&db_url).await.unwrap();
+        let mut listener = PgListener::connect_with(&context.listener_pool)
+            .await
+            .unwrap();
         listener.listen("liquidity_provider_notify").await.unwrap();
         let mut stream = listener.into_stream();
 
@@ -177,8 +181,8 @@ impl Subscription {
                     Ok(n) => {
                         if let Some(msg) = n {
                             info!("{:?}", msg);
-                            let ledgers = get_liquidity_providers(&conn, None, None).await.unwrap();
-                            yield Ok(ledgers)
+                            let providers = get_liquidity_providers(&conn, None, None).await.unwrap();
+                            yield Ok(providers)
                         }
                     }
                     Err(err) => {
@@ -198,8 +202,9 @@ impl Subscription {
     #[graphql(description = "Sends all the token supplies when they change")]
     async fn token_supplies(context: &Context) -> SupplyMapStream {
         let conn = context.pool.get().await.unwrap();
-        let db_url = get_db_url().unwrap();
-        let mut listener = PgListener::connect(&db_url).await.unwrap();
+        let mut listener = PgListener::connect_with(&context.listener_pool)
+            .await
+            .unwrap();
         listener.listen("token_supplies_notify").await.unwrap();
         let mut stream = listener.into_stream();
 
@@ -209,8 +214,8 @@ impl Subscription {
                     Ok(n) => {
                         if let Some(msg) = n {
                             info!("{:?}", msg);
-                            let ledgers = get_all_supply_maps(&conn).await.unwrap();
-                            yield Ok(ledgers)
+                            let tokens = get_all_supply_maps(&conn).await.unwrap();
+                            yield Ok(tokens)
                         }
                     }
                     Err(err) => {
