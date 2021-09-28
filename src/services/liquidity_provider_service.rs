@@ -1,12 +1,13 @@
-use crate::db::{get_schema, DBConnection};
+use crate::db::get_schema;
 use crate::models::LiquidityProviderMap;
 use anyhow::Result;
+use sqlx::{Pool, Postgres};
 
 /**
 * TODO: Find a better way to do this
 */
 pub async fn get_liquidity_providers(
-    conn: &DBConnection,
+    conn: &Pool<Postgres>,
     market_ids: Option<Vec<i32>>,
     providers: Option<Vec<String>>,
 ) -> Result<Vec<LiquidityProviderMap>> {
@@ -48,21 +49,20 @@ pub async fn get_liquidity_providers(
         },
         None => "",
     };
-    let stmt = conn
-        .prepare_cached(
-            format!(
-                "SELECT a.level, a.level_timestamp, a.bet_quantity, a.bet_predicted_probability,\
+
+    let liquidity_providers = sqlx::query(
+        format!(
+            "SELECT a.level, a.level_timestamp, a.bet_quantity, a.bet_predicted_probability,\
                   b.idx_markets_market_id, b.idx_markets_originator FROM \
                   {}.\"storage.liquidity_provider_map.bet_ordered\" a \
                   inner join {}.\"storage.liquidity_provider_map_ordered\" b on \
                   a.\"storage.liquidity_provider_map_id\" = b.id {} {} {};",
-                schema, schema, market_clause, connector, lp_provider_clause
-            )
-            .as_str(),
+            schema, schema, market_clause, connector, lp_provider_clause
         )
-        .await?;
-
-    let rows = conn.query(&stmt, &[]).await?;
-    let liquidity_providers = rows.iter().map(LiquidityProviderMap::from_row).collect();
+        .as_str(),
+    )
+    .map(LiquidityProviderMap::from_row)
+    .fetch_all(conn)
+    .await?;
     Ok(liquidity_providers)
 }

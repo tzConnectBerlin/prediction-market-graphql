@@ -1,12 +1,13 @@
-use crate::db::{get_schema, DBConnection};
+use crate::db::get_schema;
 use crate::models::LedgerMap;
 use anyhow::Result;
+use sqlx::{Pool, Postgres};
 
 /**
 * TODO: Find a better way to do this
 */
 pub async fn get_ledgers(
-    conn: &DBConnection,
+    conn: &Pool<Postgres>,
     token_ids: Option<Vec<i32>>,
     owner_addrs: Option<Vec<String>>,
 ) -> Result<Vec<LedgerMap>> {
@@ -41,21 +42,16 @@ pub async fn get_ledgers(
         },
         None => "",
     };
-    let stmt = conn
-        .prepare_cached(
-            format!(
-        "SELECT level, level_timestamp, idx_tokens_owner, tokens_nat_2, idx_tokens_token_id \
+    let ledger_maps = sqlx::query(
+        format!(
+            "SELECT level, level_timestamp, idx_tokens_owner, tokens_nat_2, idx_tokens_token_id \
         FROM \"{}\".\"storage.ledger_map_live\" {} {} {}",
-        schema,
-        tokens,
-        connector,
-        owners
-      )
-            .as_str(),
+            schema, tokens, connector, owners
         )
-        .await?;
-
-    let rows = conn.query(&stmt, &[]).await?;
-    let ledger_maps = rows.iter().map(LedgerMap::from_row).collect();
+        .as_str(),
+    )
+    .map(LedgerMap::from_row_sqlx)
+    .fetch_all(conn)
+    .await?;
     Ok(ledger_maps)
 }

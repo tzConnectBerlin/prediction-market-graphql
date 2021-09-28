@@ -1,6 +1,7 @@
 use crate::utils::numeric_to_string;
 use chrono::{DateTime, Utc};
 use juniper::GraphQLObject;
+use sqlx::{postgres::PgRow, Row};
 
 // Storage
 
@@ -37,7 +38,7 @@ pub struct SupplyMap {
 }
 
 impl SupplyMap {
-    pub fn from_row(row: &tokio_postgres::Row) -> SupplyMap {
+    pub fn from_row(row: PgRow) -> SupplyMap {
         SupplyMap {
             level: row.get(0),
             timestamp: row.get(1),
@@ -60,9 +61,9 @@ pub struct LedgerMap {
 }
 
 impl LedgerMap {
-    pub fn from_row(row: &tokio_postgres::Row) -> LedgerMap {
+    pub fn from_row_sqlx(row: PgRow) -> LedgerMap {
         LedgerMap {
-            level: row.get(0),
+            level: row.get(1),
             timestamp: row.get(1),
             owner: row.get(2),
             balance: numeric_to_string(row.get(3)),
@@ -84,7 +85,7 @@ pub struct LiquidityProviderMap {
 }
 
 impl LiquidityProviderMap {
-    pub fn from_row(row: &tokio_postgres::Row) -> LiquidityProviderMap {
+    pub fn from_row(row: PgRow) -> LiquidityProviderMap {
         LiquidityProviderMap {
             level: row.get(0),
             timestamp: row.get(1),
@@ -137,7 +138,7 @@ pub struct Market {
 }
 
 impl Market {
-    pub fn from_row(row: &tokio_postgres::Row) -> Market {
+    pub fn from_row(row: PgRow) -> Market {
         let state: String = row.get(0);
         let auction_running: Option<AuctionRunning> = if state.contains("auctionRunning") {
             Some(AuctionRunning {

@@ -41,16 +41,17 @@ impl Query {
     }
 
     #[graphql(description = "get supply map for a given token id")]
-    async fn token_supply(context: &Context, token_id: i32) -> FieldResult<SupplyMap> {
-        let conn = context.pool.get().await?;
-        let result = get_supply_map_by_token(&conn, token_id).await?;
-        Ok(result)
+    async fn token_supply(context: &Context, token_id: i32) -> FieldResult<Vec<SupplyMap>> {
+        let result = get_supply_map_by_token(&context.listener_pool, token_id).await?;
+        match result {
+            Some(x) => Ok(vec![x]),
+            _ => Ok(vec![]),
+        }
     }
 
     #[graphql(description = "get supply map for a given token id")]
     async fn token_supplies(context: &Context) -> FieldResult<Vec<SupplyMap>> {
-        let conn = context.pool.get().await?;
-        let result = get_all_supply_maps(&conn).await?;
+        let result = get_all_supply_maps(&context.listener_pool).await?;
         Ok(result)
     }
 
@@ -60,8 +61,7 @@ impl Query {
         token_ids: Option<Vec<i32>>,
         owners: Option<Vec<String>>,
     ) -> FieldResult<Vec<LedgerMap>> {
-        let conn = context.pool.get().await?;
-        let result = get_ledgers(&conn, token_ids, owners).await?;
+        let result = get_ledgers(&context.listener_pool, token_ids, owners).await?;
         Ok(result)
     }
 
@@ -71,15 +71,14 @@ impl Query {
         market_ids: Option<Vec<i32>>,
         originators: Option<Vec<String>>,
     ) -> FieldResult<Vec<LiquidityProviderMap>> {
-        let conn = context.pool.get().await?;
-        let result = get_liquidity_providers(&conn, market_ids, originators).await?;
+        let result =
+            get_liquidity_providers(&context.listener_pool, market_ids, originators).await?;
         Ok(result)
     }
 
     #[graphql(description = "get markets")]
     async fn markets(context: &Context, market_ids: Option<Vec<i32>>) -> FieldResult<Vec<Market>> {
-        let conn = context.pool.get().await?;
-        let result = get_markets(&conn, market_ids).await?;
+        let result = get_markets(&context.listener_pool, market_ids).await?;
         Ok(result)
     }
 }
@@ -102,10 +101,8 @@ pub type SupplyMapStream =
 impl Subscription {
     #[graphql(description = "Sends all the ledgers when they change")]
     async fn ledgers(context: &Context) -> LedgerStream {
-        let conn = context.pool.get().await.unwrap();
-        let mut listener = PgListener::connect_with(&context.listener_pool)
-            .await
-            .unwrap();
+        let conn = context.listener_pool.clone();
+        let mut listener = PgListener::connect_with(&conn).await.unwrap();
         listener.listen("ledger_notify").await.unwrap();
         let mut stream = listener.into_stream();
 
@@ -115,6 +112,7 @@ impl Subscription {
                     Ok(n) => {
                         if let Some(msg) = n {
                             info!("{:?}", msg);
+
                             let ledgers = get_ledgers(&conn, None, None).await.unwrap();
                             yield Ok(ledgers)
                         }
@@ -135,10 +133,8 @@ impl Subscription {
 
     #[graphql(description = "Sends all the markets when they change")]
     async fn markets(context: &Context) -> MarketStream {
-        let conn = context.pool.get().await.unwrap();
-        let mut listener = PgListener::connect_with(&context.listener_pool)
-            .await
-            .unwrap();
+        let conn = context.listener_pool.clone();
+        let mut listener = PgListener::connect_with(&conn).await.unwrap();
         listener.listen("market_notify").await.unwrap();
         let mut stream = listener.into_stream();
 
@@ -168,10 +164,8 @@ impl Subscription {
 
     #[graphql(description = "Sends all the liquidity providers when they change")]
     async fn liquidity_providers(context: &Context) -> LiquidityProviderMapStream {
-        let conn = context.pool.get().await.unwrap();
-        let mut listener = PgListener::connect_with(&context.listener_pool)
-            .await
-            .unwrap();
+        let conn = context.listener_pool.clone();
+        let mut listener = PgListener::connect_with(&conn).await.unwrap();
         listener.listen("liquidity_provider_notify").await.unwrap();
         let mut stream = listener.into_stream();
 
@@ -201,10 +195,8 @@ impl Subscription {
 
     #[graphql(description = "Sends all the token supplies when they change")]
     async fn token_supplies(context: &Context) -> SupplyMapStream {
-        let conn = context.pool.get().await.unwrap();
-        let mut listener = PgListener::connect_with(&context.listener_pool)
-            .await
-            .unwrap();
+        let conn = context.listener_pool.clone();
+        let mut listener = PgListener::connect_with(&conn).await.unwrap();
         listener.listen("token_supplies_notify").await.unwrap();
         let mut stream = listener.into_stream();
 

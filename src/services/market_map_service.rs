@@ -1,11 +1,15 @@
-use crate::db::{get_schema, DBConnection};
+use crate::db::get_schema;
 use crate::models::Market;
 use anyhow::Result;
+use sqlx::{Pool, Postgres};
 
 /**
 * TODO: Find a better way to do this
 */
-pub async fn get_markets(conn: &DBConnection, market_ids: Option<Vec<i32>>) -> Result<Vec<Market>> {
+pub async fn get_markets(
+    conn: &Pool<Postgres>,
+    market_ids: Option<Vec<i32>>,
+) -> Result<Vec<Market>> {
     let schema = get_schema();
     let market_clause = match market_ids {
         Some(ref x) => {
@@ -18,9 +22,8 @@ pub async fn get_markets(conn: &DBConnection, market_ids: Option<Vec<i32>>) -> R
         }
         None => "".to_string(),
     };
-    let stmt = conn
-        .prepare_cached(
-            format!(
+
+    let markets = sqlx::query(format!(
                 "SELECT market_map.state, market_map.level, market_map.level_timestamp, \
                 market_map.currency, market_map.metadata_ipfs_hash, market_map.metadata_adjudicator,\
                 market_map.idx_markets_nat_4, market_map.metadata_description,\
@@ -39,11 +42,6 @@ pub async fn get_markets(conn: &DBConnection, market_ids: Option<Vec<i32>>) -> R
                 on market_map.id = markets.\"storage.market_map_id\" {};",
                 schema, schema, schema, market_clause,
             )
-            .as_str(),
-        )
-        .await?;
-
-    let rows = conn.query(&stmt, &[]).await?;
-    let liquidity_providers = rows.iter().map(Market::from_row).collect();
-    Ok(liquidity_providers)
+            .as_str()).map(Market::from_row).fetch_all(conn).await?;
+    Ok(markets)
 }

@@ -1,12 +1,12 @@
 use bigdecimal::{BigDecimal, FromPrimitive};
 use pg_bigdecimal::PgNumeric;
 
-pub fn numeric_to_string(n: Option<PgNumeric>) -> Option<String> {
-    let optn: Option<BigDecimal> = match n {
-        Some(x) => x.n,
+pub fn numeric_to_string(n: Option<sqlx::types::BigDecimal>) -> Option<String> {
+    let optn: Option<String> = match n {
+        Some(x) => Some(x.normalized().to_string()),
         None => None,
     };
-    optn.map(|n| n.normalized().to_string())
+    optn
 }
 
 pub fn i32_to_numeric(n: &i32) -> PgNumeric {
