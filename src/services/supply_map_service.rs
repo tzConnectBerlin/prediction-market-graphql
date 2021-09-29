@@ -20,7 +20,7 @@ pub async fn get_supply_maps(
         ),
         _ => format!(
         "SELECT level, level_timestamp, tokens_total_supply, tokens_in_reserve, idx_tokens_nat_3 \
-        FROM \"{}\".\"storage.supply_map_ordered\";",
+        FROM \"{}\".\"storage.supply_map_live\";",
         schema
       ),
     };
