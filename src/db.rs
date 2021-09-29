@@ -1,34 +1,25 @@
 use anyhow::Result;
-use config::ConfigError;
-use serde::Deserialize;
 use std::env;
-pub type DBConnection = deadpool::managed::Object<deadpool_postgres::Manager>;
 
-#[derive(Debug, Deserialize)]
-pub struct Config {
-    pub pg: deadpool_postgres::Config,
-}
-
-impl Config {
-    pub fn from_env() -> Result<Self, ConfigError> {
-        let mut cfg = config::Config::new();
-        cfg.merge(config::Environment::new().separator("__"))?;
-        cfg.try_into()
-    }
-}
+use sqlx::{pool::PoolOptions, postgres::PgPoolOptions, Pool, Postgres};
 
 pub fn get_schema() -> String {
     env::var("SCHEMA").expect("SCHEMA must be set")
 }
 
-pub fn get_db_url() -> Result<String> {
-    let host = env::var("PG__HOST").expect("HOST must be set");
-    let port = env::var("PG__PORT").expect("PORT must be set");
-    let user = env::var("PG__USER").expect("PORT must be set");
-    let pwd = env::var("PG__PASSWORD").expect("PORT must be set");
-    let dbname = env::var("PG__DBNAME").expect("PORT must be set");
-    Ok(format!(
-        "postgres://{}:{}@{}:{}/{}",
-        user, pwd, host, port, dbname
-    ))
+pub fn get_pool_options() -> PoolOptions<Postgres> {
+    let max_listener_pool = env::var("MAX_POOL_CONNECTIONS")
+        .expect("Max lister pool not provided")
+        .as_str()
+        .parse::<u32>()
+        .unwrap();
+
+    PgPoolOptions::new().max_connections(max_listener_pool)
+}
+
+pub async fn get_db_pool() -> Result<Pool<Postgres>> {
+    let options = get_pool_options();
+    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL not provided");
+    let pool = options.connect(&db_url).await?;
+    Ok(pool)
 }

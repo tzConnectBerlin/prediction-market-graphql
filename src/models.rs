@@ -15,7 +15,7 @@ pub struct Storage {
 }
 
 impl Storage {
-    pub fn from_row(row: &tokio_postgres::Row) -> Storage {
+    pub fn from_row(row: PgRow) -> Storage {
         Storage {
             level: row.get(0),
             timestamp: row.get(1),
