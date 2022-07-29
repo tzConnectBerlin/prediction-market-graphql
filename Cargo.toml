@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 dotenv = "0.15.0"
-juniper = "0.15.7"
+juniper = "0.15.10"
 juniper_graphql_ws = "0.3.0"
 env_logger = "0.9"
 serde = { version = "1.0.130", features = ["derive"] }
